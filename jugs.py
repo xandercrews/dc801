@@ -26,6 +26,7 @@ import re
 EMPTY_PATTERN  = re.compile('^\s*$')
 
 import collections
+import operator
 
 buffer = []
 
@@ -339,12 +340,18 @@ class JugSolver(object):
 
         # find m and n
         def m_n():
-            for m,n in itertools.permutations(list(weird_iterator(20)), 2):
+            solns = []
+            for m,n in itertools.permutations(list(weird_iterator(40)), 2):
                 # log.debug('%d*%d + %d*%d == %s', red, m, blue, n, str(red*m+blue*n))
                 if red*m + blue*n == target:
-                    return (m,n)
+                    solns.append((abs(m)+abs(n),m,n))
 
-            raise Exception('found no solution')
+            if len(solns) == 0:
+                raise Exception('found no solution')
+
+            sorted(solns,key=operator.itemgetter(0),reverse=False)
+            log.info('pours: %d' % solns[0][0])
+            return solns[0][1], solns[0][2]
 
         m, n = m_n()
         log.info('red %d blue %d' % (m,n,))
