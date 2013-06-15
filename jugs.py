@@ -14,7 +14,7 @@ import sys
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 
 import IPython
 
@@ -136,7 +136,6 @@ class JugSolver(object):
                 bluevol = 0
 
                 if redvol == target:
-                    mergeset.append('put red jug onto scale')
                     break
 
                 else:
@@ -145,9 +144,11 @@ class JugSolver(object):
 
         if bluevol == target:
             mergeset.append('put blue jug onto scale')
+        elif redvol == target:
+            mergeset.append('put red jug onto scale')
         else:
             log.error(mergeset)
-            log.error(red, blue, target, m, n)
+            log.error('%d %d %d %d %d', red, blue, target, m, n)
             raise Exception('wut happened?')
 
         return mergeset
@@ -259,6 +260,9 @@ class JugSolver(object):
                 mergeset.append('pour blue jug into red jug')
                 redvol += blue
 
+                if redvol == target:
+                    break
+
             if len(redset) > 0:
                 mergeset.append(blueset.pop())
                 mergeset.append('pour blue jug into red jug')
@@ -268,7 +272,6 @@ class JugSolver(object):
                 redvol = 0
 
                 if bluevol == target:
-                    mergeset.append('put blue jug onto scale')
                     break
 
                 else:
@@ -277,9 +280,11 @@ class JugSolver(object):
 
         if redvol == target:
             mergeset.append('put red jug onto scale')
+        elif bluevol == target:
+            mergeset.append('put blue jug onto scale')
         else:
             log.error(mergeset)
-            log.error(blue, red, target, m, n)
+            log.error('%d %d %d %d %d', red, blue, target, m, n)
             raise Exception('wut happened?')
 
         return mergeset
@@ -322,7 +327,7 @@ class JugSolver(object):
 
     @staticmethod
     def solve_jugs(red, blue, target):
-        log.debug('solving for %sg %sg -> %sg' % (red, blue, target,))
+        log.info('solving for %sg %sg -> %sg' % (red, blue, target,))
 
         def weird_iterator(absbound=100):
             assert(absbound > 0)
@@ -334,7 +339,7 @@ class JugSolver(object):
 
         # find m and n
         def m_n():
-            for m,n in itertools.permutations(list(weird_iterator()), 2):
+            for m,n in itertools.permutations(list(weird_iterator(20)), 2):
                 # log.debug('%d*%d + %d*%d == %s', red, m, blue, n, str(red*m+blue*n))
                 if red*m + blue*n == target:
                     return (m,n)
@@ -468,6 +473,7 @@ if __name__ == '__main__':
     # s = JugSolver.solve_jugs(53,23,19) # soln_2
     # s = JugSolver.solve_jugs(83,41,48) # soln_2 ?
     # s = JugSolver.solve_jugs(3,5,4) # soln_3?
+    # s = JugSolver.solve_jugs(31,29,5) # soln_4?
     # s = JugSolver.solve_jugs(61, 3, 6) # soln_5 ?
     # pprint.pprint(s, indent=2)
     # sys.exit(1)
