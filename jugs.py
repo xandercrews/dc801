@@ -69,7 +69,11 @@ class JugSolver(object):
             self.action_queue.extend(list('nnnnnnenwn'))
         else:
             # maybe search backwards for things we need to know?
-            for message in self.messages.reverse():
+            r_messages = self.messages[:]
+            r_messages.reverse()
+
+            for message in r_messages:
+                pass
 
     def do(self):
         thing_to_do = self.action_queue.pop(0)
