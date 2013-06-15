@@ -73,7 +73,24 @@ class JugSolver(object):
             r_messages.reverse()
 
             for message in r_messages:
-                pass
+                if 'red jug is sitting' in message:
+                    self.action_queue.extend(('look inscription','look red jug','look blue jug'))
+                    break
+                elif 'red jug holds' in message:
+                    vol = re.search("of (\d+) gallons", message)
+                    red = int(vol.group(1))
+                elif 'blue jug holds' in message:
+                    vol = re.search("of (\d+) gallons", message)
+                    blue = int(vol.group(1))
+                elif 'To get to the next stage put' in message:
+                    vol = re.search("(\d+) gallons", message)
+                    target = int(vol.group(1))
+                    self.solve_jugs(red, blue, target)
+                    break
+
+    def solve_jugs(self, red, blue, target):
+        log.debug('solving for %sg %sg -> %sg' % (red, blue, target,))
+        pass
 
     def do(self):
         thing_to_do = self.action_queue.pop(0)
