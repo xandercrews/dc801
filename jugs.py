@@ -1,4 +1,5 @@
 # encoding: utf-8
+import pprint
 import socket
 import itertools
 
@@ -123,6 +124,9 @@ class JugSolver(object):
                 mergeset.append('pour red jug into blue jug')
                 bluevol += red
 
+                if bluevol == target:
+                    break
+
             if len(blueset) > 0:
                 mergeset.append(redset.pop())
                 mergeset.append('pour red jug into blue jug')
@@ -195,7 +199,125 @@ class JugSolver(object):
     @staticmethod
     def solution_3(red, blue, target, m, n):
         assert(m < 0)
+        assert(red < blue)
+
+        redset = ['empty red jug' for ix in range(abs(m))]
+        blueset = ['fill blue jug' for ix in range(abs(n))]
+
+        mergeset = []
+
+        bluevol = 0
+        redvol = 0
+
+        while len(blueset) > 0 or len(redset) > 0:
+            mergeset.append(blueset.pop())
+            bluevol = blue
+
+            while bluevol - red > 0:
+                mergeset.append('pour blue jug into red jug')
+                mergeset.append(redset.pop())
+                bluevol -= (red - redvol)
+                redvol = 0
+
+                if bluevol == target:
+                    mergeset.append('put blue jug onto scale')
+                    break
+
+            if bluevol == target:
+                break
+
+            mergeset.append('pour blue jug into red jug')
+
+            redvol = bluevol
+            bluevol = 0
+
+        if redvol == target:
+            mergeset.append('put red jug onto scale')
+        elif bluevol != target:
+            log.error(mergeset)
+            log.error(blue, red, target, m, n)
+            raise Exception('wut happened?')
+
+        return mergeset
+
+
+    @staticmethod
+    def solution_4(red, blue, target, m, n):
+        assert(m < 0)
         assert(red > blue)
+
+        redset = ['empty red jug' for ix in range(abs(m))]
+        blueset = ['fill blue jug' for ix in range(abs(n))]
+
+        mergeset = []
+
+        redvol = 0
+
+        while len(blueset) > 0 or len(redset) > 0:
+            while blue + redvol < red:
+                mergeset.append(blueset.pop())
+                mergeset.append('pour blue jug into red jug')
+                redvol += blue
+
+            if len(redset) > 0:
+                mergeset.append(blueset.pop())
+                mergeset.append('pour blue jug into red jug')
+                mergeset.append(redset.pop())
+
+                bluevol = (blue + redvol) - red
+                redvol = 0
+
+                if bluevol == target:
+                    mergeset.append('put blue jug onto scale')
+                    break
+
+                else:
+                    mergeset.append('pour blue jug into red jug')
+                    redvol = bluevol
+
+        if redvol == target:
+            mergeset.append('put red jug onto scale')
+        else:
+            log.error(mergeset)
+            log.error(blue, red, target, m, n)
+            raise Exception('wut happened?')
+
+        return mergeset
+
+    @staticmethod
+    def solution_5(red, blue, target, m, n):
+        assert(m == 0 or n == 0)        # one's zero
+        assert(m > 0 or n > 0)      # the other is positive
+
+        solution = []
+
+        if m > 0:
+            color = 'red'
+            holder = 'blue'
+            unit = red
+            assert(blue > target)     # blue needs to be big enough to hold target
+            assert(red < target)      # red needs to be smaller and ...
+            assert(target % red == 0) # .. a factor
+        else:
+            color = 'blue'
+            holder = 'red'
+            unit = blue
+            assert(red > target)       # red needs to be big enough to hold target
+            assert(blue < target)      # blue needs to be smaller and ...
+            assert(target % blue == 0) # .. a factor
+
+        vol = 0
+
+        while vol < target:
+            solution.extend(('fill %s jug' % color,'pour %s jug into %s jug' % (color, holder,),))
+            vol += unit
+
+        if vol != target:
+            raise Exception('ah shit. really? fuck you sleep, you win')
+
+        solution.append('put %s jug onto scale' % holder)
+
+        return solution
 
 
     @staticmethod
@@ -223,8 +345,9 @@ class JugSolver(object):
         log.info('red %d blue %d' % (m,n,))
 
         # try each solution, which is responsible for asserting its own assumptions
-        # for soln in (JugSolver.solution_1, JugSolver.solution_2):
-        for soln in (JugSolver.solution_1, JugSolver.solution_2,):
+        for soln in (JugSolver.solution_1, JugSolver.solution_2, JugSolver.solution_3, JugSolver.solution_4,
+                     JugSolver.solution_5,):
+        # for soln in (JugSolver.solution_3,):
             try:
                 return soln(red, blue, target, m, n)
             except AssertionError, e:
@@ -340,9 +463,13 @@ class JugSolver(object):
             self._recv()
 
 if __name__ == '__main__':
-    # print JugSolver.solve_jugs(19,67,65) # soln_1 ?
-    # print JugSolver.solve_jugs(53,23,19) # soln_2
-    # print JugSolver.solve_jugs(83,41,48) # soln_2 ?
+    # s = JugSolver.solve_jugs(19,67,65) # soln_1 ?
+    # s = JugSolver.solve_jugs(5,37,28) # soln_1 ?
+    # s = JugSolver.solve_jugs(53,23,19) # soln_2
+    # s = JugSolver.solve_jugs(83,41,48) # soln_2 ?
+    # s = JugSolver.solve_jugs(3,5,4) # soln_3?
+    # s = JugSolver.solve_jugs(61, 3, 6) # soln_5 ?
+    # pprint.pprint(s, indent=2)
     # sys.exit(1)
 
     j = JugSolver()
