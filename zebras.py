@@ -4,6 +4,7 @@ import sys
 import logging
 import logging.config
 import operator
+import time
 
 import yaml
 
@@ -33,6 +34,9 @@ log = logging.getLogger(__name__)
 import pprint
 import socket
 import telnetlib
+
+class StopException(Exception):
+    pass
 
 def start_game(tn):
     welcome = tn.read_until('Press return to start')
@@ -154,11 +158,66 @@ def objectify_track(track):
 
     return you, things
 
+def _chess_solver(x,y,d,path=[]):
+    if y < 1:
+        # you made it
+        yield path
+    else:
+        # check for collisions
+        if (x,y,) not in d:
+            if x > 1:
+                for soln in _chess_solver(x-1,y-1,d,path + ['l']):
+                    yield soln
+            for soln in _chess_solver(x,y-1,d,path + ['']):
+                yield soln
+            if x < 5:
+                for soln in _chess_solver(x+1,y-1,d,path + ['r']):
+                    yield soln
+        else:
+            log.debug('collide with %s on %s' % (d[(x,y,)], path))
+
 def closest_obstacle_row(things):
     assert(len(things) > 0)
-    closest = sorted(things, key=operator.attrgetter('y'), reverse=True)
+    closest = filter(lambda t: t.y != you.y, things)        # filter
+    closest = sorted(closest, key=operator.attrgetter('y'), reverse=True)
     closest = filter(lambda thing: thing.y == closest[0].y, closest)
     return closest
+
+def chess_the_path(you, things):
+    thingdict = dict({(t.x,t.y): None for t in things})
+
+    min_turns = 99
+    chosen_solution = None
+
+    def rel_x(c):
+        if c == '':
+            return 0
+        elif c == 'l':
+            return -1
+        elif c == 'r':
+            return 1
+        else:
+            raise Exception('wut?')
+
+    best_position = 99
+
+    for solution in _chess_solver(you.x,you.y,thingdict):
+        # num_turns = sum(map(lambda c: 1 if c == '' else 0, solution))
+        # if num_turns < min_turns:
+        #     chosen_solution = solution
+
+        new_position = you.x + sum(map(rel_x, solution))
+        if abs(new_position - 3) < abs(best_position - 3):
+            best_position = new_position
+            chosen_solution = solution
+
+    if chosen_solution is None:
+        raise Exception('no solution, prepare your anus')
+    else:
+        log.info('solution: %s' % chosen_solution)
+        log.info('solution end position %d' % best_position)
+
+    return chosen_solution[0]
 
 def decide_move(you, things):
     LEFT = 'l'
@@ -178,25 +237,31 @@ def decide_move(you, things):
             return HOLD
 
     # determine the closest obstacles, don't worry about things on the same row
-    c = closest_obstacle_row(filter(lambda t: t.y != you.y, things))
+    c = closest_obstacle_row(things)
+    if len(c) > 0:
+        # calculate the possible holes
+        c_cols = map(operator.attrgetter('x'), c)
+        holes = [x for x in range(1,6) if x not in c_cols]
 
-    # calculate the possible holes
-    c_cols = map(operator.attrgetter('x'), c)
-    holes = [x for x in range(1,6) if x not in c_cols]
+        if len(holes) > 1:
+            # decision point, which hole do we take?
+            # simulate what would happen if we went that way?
+            start_t = time.time()
+            next_move = chess_the_path(you, things)
+            log.info('chess path took: %f' % (time.time() - start_t))
+            return next_move
+        else:
+            log.info('thought: only one choice')
 
-    if len(holes) > 1:
-        # decision point, which hole do we take?
-        # simulate what would happen if we went that way?
-        log.info('thought: possible paths: %s' % holes)
-        target_hole = holes[0] # lol
+            target_hole = holes[0] # lol, which hole is #0
+            # target_hole = sorted(holes, key=lambda h: abs(3-h))[0] # lol
+
+            if you.x > target_hole:
+                return LEFT
+            elif you.x < target_hole:
+                return RIGHT
     else:
-        log.info('thought: only one choice')
-        target_hole = holes[0] # lol
-
-    if you.x > target_hole:
-        return LEFT
-    elif you.x < target_hole:
-        return RIGHT
+        log.info('fucking coast v2')
 
     return HOLD
 
@@ -221,6 +286,7 @@ tn.get_socket().setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
 start_game(tn)
 
+
 while True:
     try:
         # parse the track
@@ -239,6 +305,11 @@ while True:
 
     except EOFError, e:
         log.error('game over')
+        break
+
+    except StopException, e:
+        print hooman_readable_track
+        log.error('stop')
         break
 
 tn.close()
